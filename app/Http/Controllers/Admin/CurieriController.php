@@ -19,6 +19,7 @@ use App\Traits\OrderStatusCheckTrait;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -85,10 +86,25 @@ class CurieriController extends Controller
         // dd($val->fails());
     }
 
+    private function getCarrierOptions()
+    {
+        return [
+            'work_saturday' => __('Livrare sambata'),
+            'require_awb' => __('Imprimarea obligatorie a etichetei de transport pe colet'),
+            'open_when_received' => __('Deschidere la livrare'),
+            'retur_document' => __('Returnare document/pachet'),
+            'ramburs_cash' => __('Ramburs cash'),
+            'ramburs_cont' => __('Ramburs in cont'),
+            'assurance' => __('Ofera asigurare')
+        ];
+    }
+
     public function create()
     {
         return view('admin.curieri.create', [
             'prices' => old('prices', $prices ?? []),
+            'twoship_carriers' => $this->fetch2shipCarriers(),
+            'carrier_options' => $this->getCarrierOptions(),
         ]);
     }
 
@@ -106,7 +122,7 @@ class CurieriController extends Controller
         }
 
         $nr_colete = $input['nr_colete'] ?? [];
- 		unset($input['nr_colete']);
+        unset($input['nr_colete']);
         $discounts = $input['discounts'] ?? [];
         unset($input['discounts']);
         $prices = $input['prices'] ?? [];
@@ -123,15 +139,19 @@ class CurieriController extends Controller
 
         $curier = Curier::create($input);
 
-        for($i = 0 ; $i < count($nr_colete) ; $i++) {
-        	CurierDsicount::create([
-        		'curier_id' => $curier->id,
-        		'nr_colete' => $nr_colete[$i],
-        		'discount' => $discounts[$i],
-        	]);
+        for($i = 0; $i < count($nr_colete); $i++) {
+            CurierDsicount::create([
+                'curier_id' => $curier->id,
+                'nr_colete' => $nr_colete[$i],
+                'discount' => $discounts[$i],
+            ]);
         }
 
         if(count($special) > 0) {
+            if (isset($special['2ship_options'])) {
+                $this->save2shipOptions($curier, $special['2ship_carrier_id'] ?? null, $special['2ship_options']);
+                unset($special['2ship_options']);
+            }
             $curier->setMetas($special, 'special_');
         }
 
@@ -154,6 +174,8 @@ class CurieriController extends Controller
             'curier' => $curier->withMetas('special_'),
             'prices' => old('prices', $this->unpluck($curier->pricesMetaWithKey('kg','price')) ?? []),
             'discounts' => $curier->discounts,
+            'twoship_carriers' => $this->fetch2shipCarriers(),
+            'carrier_options' => $this->getCarrierOptions(),
         ]);
     }
 
@@ -202,6 +224,7 @@ class CurieriController extends Controller
             'ramburs_cash',
             'ramburs_cont',
             'assurance',
+            'retur_document',
         ];
 
         foreach($options as $index) {
@@ -219,16 +242,20 @@ class CurieriController extends Controller
 
         Curier::where('id', $curier->id)->update($input);
         CurierDsicount::where('curier_id', $curier->id)->delete();
-        for($i = 0 ; $i < count($nr_colete) ; $i++) {
-        	CurierDsicount::create([
-        		'curier_id' => $curier->id,
-        		'nr_colete' => $nr_colete[$i],
-        		'discount' => $discounts[$i],
-        	]);
+        for ($i = 0; $i < count($nr_colete); $i++) {
+            CurierDsicount::create([
+                'curier_id' => $curier->id,
+                'nr_colete' => $nr_colete[$i],
+                'discount' => $discounts[$i],
+            ]);
         }
 
         $curier->unsetMeta('special_%', 'like');
         if(count($special) > 0) {
+            if (isset($special['2ship_options'])) {
+                $this->save2shipOptions($curier, $special['2ship_carrier_id'] ?? null, $special['2ship_options']);
+                unset($special['2ship_options']);
+            }
             $curier->setMetas($special, 'special_');
         }
 
@@ -245,6 +272,34 @@ class CurieriController extends Controller
         session()->flash('success', 'Curierul a fost modificat cu succes.');
 
         return redirect()->route('admin.curieri.edit', $curier->id);
+    }
+
+    private function save2shipOptions(Curier $curier, $carrierId, $options)
+    {
+        if (!$carrierId || !is_array($options)) {
+            return;
+        }
+
+        $allCarriers = collect($this->fetch2shipCarriers());
+        $selectedCarrier = $allCarriers->firstWhere('Id', $carrierId);
+
+        if (!$selectedCarrier || !isset($selectedCarrier['Options'])) {
+            return;
+        }
+
+        $carrierOptions = collect($selectedCarrier['Options']);
+
+        foreach ($options as $key => $code) {
+            if ($code) {
+                $optionData = $carrierOptions->firstWhere('code', $code);
+                if ($optionData) {
+                    $curier->setMeta(
+                        'special_2ship_' . $key,
+                        json_encode(['code' => $optionData['code'], 'name' => $optionData['name']])
+                    );
+                }
+            }
+        }
     }
 
     public function destroy(Curier $curier)
@@ -334,7 +389,7 @@ class CurieriController extends Controller
     {
         return [
             'name' => ['required', 'string', 'min:3', 'max:255', 'unique:curieri,name,'.$id],
-            'api_curier' => ['required', Rule::in(['1','2','3'])],
+            'api_curier' => ['required', Rule::in(['1','2','3','5'])],
             'type' => ['required', Rule::in(['1','2','3'])],
             'logo' => ['mimes:jpg,jpeg,png,gif,webp'] + (!$id ? ['required'] : [
                 'nullable','required_unless:old_logo,1'
@@ -347,6 +402,9 @@ class CurieriController extends Controller
             // 'minim_price' => ['nullable', 'numeric', 'min:0'],
             'special' => ['nullable', 'array', 'min:1'],
             'special.*' => ['nullable', 'numeric', 'min:1', 'max:100'],
+            'special.2ship_carrier_id' => ['nullable', 'numeric'],
+            'special.2ship_options' => ['nullable', 'array'],
+            'special.2ship_options.*' => ['nullable', 'string'],
             // 'prices' => ['nullable', 'array', 'min:1'],
             'prices.kg' => ['nullable', 'array', 'min:1'],
             'prices.price' => ['nullable', 'array', 'min:1', function ($attribute, $value, $fail) {
@@ -453,5 +511,28 @@ class CurieriController extends Controller
             'countries.*.kg.*' => __('kilogram minim per treapta'),
             'countries.*.price.*' => __('pret minim per treapta'),
         ];
+    }
+
+    private function fetch2shipCarriers()
+    {
+        try {
+            $body = [
+                "WS_Key" => env('2SHIP_API_KEY'), 
+                "Address" => [ "Country" => "RO" ],
+                "Type" => "Address"
+            ];
+            $response = Http::withHeaders([
+                'Authorization' => 'User-WS-Key ' . env('2SHIP_API_KEY'),
+                'Content-Type' => 'application/json',
+            ])->post(env('2SHIP_API_URL') . '/GetCarriers', $body);
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+        } catch (\Exception $e) {
+            \Log::error('2Ship API Error: ' . $e->getMessage());
+        }
+
+        return [];
     }
 }

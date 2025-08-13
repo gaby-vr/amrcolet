@@ -46,6 +46,9 @@
             <a class="navigation-header-text">Informatii si documente</a><i class="navigation-header-icon material-icons">more_horiz</i>
         </li>
         <li class="bold">
+            <a class="waves-effect waves-cyan {{ request()->routeIs('dashboard.orders.pending') ? 'active' : '' }}" href="{{ route('dashboard.orders.pending') }}"><i class="material-icons">hourglass_empty</i><span class="menu-title" data-i18n="Comenzi in asteptare">Comenzi in asteptare</span></a>
+        </li>
+        <li class="bold">
             <a class="waves-effect waves-cyan {{ request()->routeIs('dashboard.orders.show') || request()->routeIs('dashboard.orders.view') ? 'active' : '' }}" href="{{ route('dashboard.orders.show') }}"><i class="material-icons">assignment</i><span class="menu-title" data-i18n="Lista comenzi">Lista comenzi</span></a>
         </li>
         <li class="bold">

@@ -10,6 +10,7 @@ use App\Models\Invoice;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -57,6 +58,7 @@ class UsersController extends Controller
             'curieri' => Curier::all(),
             'prices' => old('prices'),
             'frequency_dates' => old('frequency_dates'),
+            'twoship_locations' => $this->fetch2shipLocations(),
         ]);
     }
 
@@ -91,6 +93,7 @@ class UsersController extends Controller
             'curieri' => Curier::all(),
             'curieri_speciali' => $user->couriers->pluck('id')->toArray() ?? [],
             'frequency_dates' => old('frequency_dates', json_decode($user->frequency_dates, true)),
+            'twoship_locations' => $this->fetch2shipLocations(),
         ]);
     }
 
@@ -252,5 +255,23 @@ class UsersController extends Controller
             'days_of_negative_balance' => ['nullable', 'required_if:role,2', 'exclude_unless:role,2', 'integer', 'min:1', 'max:255'],
             'expiration_date' => ['nullable', 'date', 'exclude_unless:role,2'],
         ];
+    }
+
+    private function fetch2shipLocations()
+    {
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => 'User-WS-Key ' . env('2SHIP_API_KEY'),
+                'Content-Type' => 'application/json',
+            ])->get(env('2SHIP_API_URL') . '/GetAllLocations');
+
+            if ($response->successful()) {
+                return $response->json()['Locations'];
+            }
+        } catch (\Exception $e) {
+            \Log::error('2Ship API Error: ' . $e->getMessage());
+        }
+
+        return [];
     }
 }

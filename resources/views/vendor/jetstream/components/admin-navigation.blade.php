@@ -5,8 +5,8 @@
 @endpush
 
 <div class="flex flex-col lg:flex-row bg-gray-100 pt-16">
-    <div class="bg-black shadow-xl h-14 fixed bottom-0 lg:relative lg:h-auto lg:min-h-screen z-10 w-full lg:w-48 nav-admin">
-        <div class="lg:mt-16 lg:w-48 lg:fixed lg:left-0 lg:top-0 content-center lg:content-start text-left justify-between">
+    <div class="bg-black shadow-xl h-14 fixed bottom-0 lg:relative lg:h-auto lg:min-h-screen z-10 w-full lg:w-56 nav-admin">
+        <div class="lg:mt-16 lg:w-56 lg:fixed lg:left-0 lg:top-0 content-center lg:content-start text-left justify-between">
             <ul class="list-reset flex flex-row lg:flex-col py-0 lg:py-3 px-1 lg:px-2 text-center lg:text-left browser-default">
                 <li class="mr-3 flex-1">
                     <a href="{{ route('admin.users.show') }}" class="block py-1 lg:py-3 pl-1 align-middle text-white no-underline hover:text-white border-b-2 border-gray-800 hover:border-orange-500 @if(request()->routeIs('admin.view') || request()->routeIs('admin.users.*')) border-blue-700 text-white @endif">
@@ -17,6 +17,19 @@
                     <a href="{{ route('admin.orders.show') }}" class="block py-1 lg:py-3 pl-1 align-middle text-white no-underline hover:text-white border-b-2 border-gray-800 hover:border-blue-700 @if(request()->routeIs('admin.orders.*')) border-blue-700 text-white @endif">
                         <i class="fas fa-check-circle"></i>
                         <span class="hidden sm:block pb-1 lg:pb-0 pl-0 lg:pl-3 text-xs lg:text-base text-white lg:text-gray-400 block lg:inline-block">Comenzi
+                            @if($cancel_orders)
+                                <span class="bg-yellow-700 text-white px-1 rounded-full text-sm lg:float-right inline lg:hidden">{{ $cancel_orders }}</span>
+                            @endif
+                        </span>
+                        @if($cancel_orders)
+                            <span class="bg-yellow-700 text-white px-1 rounded-full text-sm hidden float-right lg:inline">{{ $cancel_orders }}</span>
+                        @endif
+                    </a>
+                </li>
+                <li class="mr-3 flex-1">
+                    <a href="{{ route('admin.pending_orders.show') }}" class="block py-1 lg:py-3 pl-1 align-middle text-white no-underline hover:text-white border-b-2 border-gray-800 hover:border-blue-700 @if(request()->routeIs('admin.pending_orders.*')) border-blue-700 text-white @endif">
+                        <i class="fas fa-hourglass"></i>
+                        <span class="hidden sm:block pb-1 lg:pb-0 pl-0 lg:pl-3 text-xs lg:text-base text-white lg:text-gray-400 block lg:inline-block">Comenzi in asteptare
                             @if($cancel_orders)
                                 <span class="bg-yellow-700 text-white px-1 rounded-full text-sm lg:float-right inline lg:hidden">{{ $cancel_orders }}</span>
                             @endif

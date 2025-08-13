@@ -206,6 +206,11 @@ class Curier extends Model
             })->sortBy('kg')->toArray();
     }
 
+    public function getTwoShipCarrierId()
+    {
+        return $this->metas()->select('value')->where('name', '=', 'special_2ship_carrier_id')->first()->value ?? null;
+    }
+
     public function discount($value)
     {
         foreach($this->discountsDesc as $discount) {

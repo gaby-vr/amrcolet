@@ -4,6 +4,9 @@
     .cke_reset {
         box-shadow: none!important;
     }
+    #twoship-options-mapping {
+        display: none;
+    }
 </style>
 @endpush
 @push("scripts")
@@ -89,6 +92,70 @@
         e.preventDefault();
         myDropzone.processQueue();
     };
+</script>
+<script type="text/javascript">
+    document.addEventListener('DOMContentLoaded', function () {
+        const twoshipCarriers = @json($twoship_carriers);
+        const savedMappings = {
+            @foreach($carrier_options as $key => $label)
+                @if(isset($curier) && isset($curier->getAttributes()['2ship_' . $key]))
+                    '{{ $key }}': {!! $curier->getAttributes()['2ship_' . $key] !!},
+                @endif
+            @endforeach
+        };
+
+        const carrierRadios = document.querySelectorAll('input[name="special[2ship_carrier_id]"]');
+        const mappingContainer = document.getElementById('twoship-options-mapping');
+
+        function updateCarrierOptions(selectedCarrierId) {
+            if (!selectedCarrierId) {
+                mappingContainer.style.display = 'none';
+                return;
+            }
+
+            const carrier = twoshipCarriers.find(c => c.Id == selectedCarrierId);
+            if (!carrier || !carrier.Options) {
+                mappingContainer.style.display = 'none';
+                return;
+            }
+
+            mappingContainer.style.display = 'block';
+            const carrierOptions = carrier.Options;
+
+            document.querySelectorAll('.twoship-option-select').forEach(select => {
+                const optionKey = select.dataset.optionKey;
+                const currentValue = select.value;
+                select.innerHTML = '<option value="">{{ __("Selecteaza o optiune") }}</option>'; // Reset options
+
+                carrierOptions.forEach(option => {
+                    const optionEl = document.createElement('option');
+                    optionEl.value = option.code;
+                    optionEl.textContent = `${option.code} ${option.name}`;
+                    select.appendChild(optionEl);
+                });
+
+                // Set saved value
+                if (savedMappings[optionKey] && savedMappings[optionKey].code) {
+                    const savedCode = savedMappings[optionKey].code;
+                    if (Array.from(select.options).some(opt => opt.value == savedCode)) {
+                       select.value = savedCode;
+                    }
+                }
+            });
+        }
+
+        carrierRadios.forEach(radio => {
+            radio.addEventListener('change', (event) => {
+                updateCarrierOptions(event.target.value);
+            });
+        });
+
+        // Initial check on page load
+        const initiallyChecked = document.querySelector('input[name="special[2ship_carrier_id]"]:checked');
+        if (initiallyChecked) {
+            updateCarrierOptions(initiallyChecked.value);
+        }
+    });
 </script>
 @endpush
 
@@ -178,6 +245,10 @@
                             <x-jet-label class="flex items-center">
                                 <x-jet-radio name="api_curier" value="3" :checked="old('api_curier', $curier->api_curier ?? null) == '3'" required />
                                 <div class="ml-2">GLS</div>
+                            </x-jet-label>
+                            <x-jet-label class="flex items-center">
+                                <x-jet-radio name="api_curier" value="5" :checked="old('api_curier', $curier->api_curier ?? null) == '5'" required />
+                                <div class="ml-2">2ship</div>
                             </x-jet-label>
                         </div>
                     </div>
@@ -443,6 +514,38 @@
                             RON
                         </x-jet-input>
                     </div>
+
+                    <div class="mt-4">
+                        <x-jet-label for="twoship_curier" value="{{ __('Mapare curier 2ship') }}" />
+                        <div class="grid gap-3 grid-cols-1 md:grid-cols-3 mt-2">
+                            @foreach ($twoship_carriers as $carrier)
+                                <x-jet-label class="flex items-center">
+                                    <x-jet-radio name="special[2ship_carrier_id]" value="{{ $carrier['Id'] }}" class="twoship-radio" 
+                                    required
+                                    :checked="isset($curier) && isset($curier->getAttributes()['2ship_carrier_id']) && $curier->getAttributes()['2ship_carrier_id'] == $carrier['Id']"
+                                    />
+                                    <div class="ml-2">{{ $carrier['Name'] }}</div>
+                                </x-jet-label>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    {{-- 2Ship Options Mapping Section --}}
+                    <div class="mt-4 p-4 border rounded-md" id="twoship-options-mapping">
+                        <h4 class="font-bold mb-3">{{ __('Mapare optiuni 2ship') }}</h4>
+                        @foreach ($carrier_options as $key => $label)
+                        <div class="mt-3">
+                            <x-jet-label for="2ship_option_{{ $key }}" value="{{ $label }}" />
+                            <select name="special[2ship_options][{{ $key }}]"
+                                    id="2ship_option_{{ $key }}"
+                                    data-option-key="{{ $key }}"
+                                    class="border-gray-300 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 rounded-md shadow-sm w-full twoship-option-select">
+                                <option value="">{{ __('Selecteaza un curier mai intai') }}</option>
+                            </select>
+                        </div>
+                        @endforeach
+                    </div>
+
                 </div>
                 <div class="flex items-center justify-end col-span-12 mt-4">
                     <x-jet-button class="ml-4" id="submit">

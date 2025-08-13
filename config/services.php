@@ -30,4 +30,13 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    # BEGIN 2SHIP INTEGRATION
+    '2ship' => [
+        'api_key' => env('2SHIP_API_KEY'),
+    ],
+    'amr2ship' => [
+        'api_key' => env('AMR2SHIP_API_KEY'),
+    ],
+    # END 2SHIP INTEGRATION
+
 ];

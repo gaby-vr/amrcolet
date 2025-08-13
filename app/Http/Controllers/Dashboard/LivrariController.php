@@ -79,6 +79,11 @@ class LivrariController extends Controller
                             $courierGateway = app(CourierGateway::class, ['type' => $livrare->api]);
                             $success = $courierGateway->cancelOrder(['awb' => $livrare->api_shipment_id]);
                             break;
+                        case 5:
+                            // 2ship
+                            $courierGateway = app(CourierGateway::class, ['type' => $livrare->api]);
+                            $success = $courierGateway->cancelOrder(['shipmentId' => $livrare->api_shipment_id]);
+                            break;
                         default:
                             break;
                     }
@@ -293,6 +298,12 @@ class LivrariController extends Controller
                     $courierGateway->printAWB($array);
                     break;
                 case 3:
+                    $courierGateway = app(CourierGateway::class, ['type' => $livrare->api]);
+                    $array['awb'] = $livrare->api_shipment_id;
+                    $courierGateway->printAWB($array);
+                    break;
+                case 5:
+                    // 2ship
                     $courierGateway = app(CourierGateway::class, ['type' => $livrare->api]);
                     $array['awb'] = $livrare->api_shipment_id;
                     $courierGateway->printAWB($array);

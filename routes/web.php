@@ -143,6 +143,14 @@ Route::namespace('App\Http\Controllers')->group(function() {
                 Route::get('/', 'index')->name('show');
                 Route::get('/export', 'downloadExcel')->name('excel');
 
+                Route::get('/in-asteptare', function () {
+                    return view('profile.dashboard', [
+                        'section' => 'orders',
+                        'subsection' => 'pending',
+                        'title' => __('Comenzi în așteptare'),
+                    ]);
+                })->name('pending');
+
                 Route::middleware('can:read,livrare')->group(function () {
                     Route::get('{livrare}', 'view')->name('view');
                     Route::post('{livrare}', 'cancel')->name('cancel');
@@ -231,6 +239,17 @@ Route::namespace('App\Http\Controllers')->group(function() {
                 Route::get('{cancelRequest}/accepta', 'acceptCancelRequest')->name('accept.cancel');
                 Route::get('{cancelRequest}/refuza', 'refuseCancelRequest')->name('refuse.cancel');
                 Route::get('{livrare}/{invoice}', 'showPDF')->middleware(['forget.parameters:livrare'])->name('pdf');
+            });
+
+            Route::group(['prefix' => 'comenzi-in-asteptare', 'as' => 'pending_orders.', 'controller' => 'OrdersController'], function () {
+                Route::get('/', 'pending')->name('show');
+                Route::post('importTwoShip', 'importTwoShip')->name('importTwoShip');
+                Route::get('{livrare}', 'editPending')->name('edit');
+                Route::post('{livrare}/update', 'updatePending')->name('updatePending');
+                // Route::get('{livrare}/awb', 'awb')->name('awb');
+                // Route::delete('{livrare}/sterge', 'destroy')->name('destroy');
+                // Route::get('{cancelRequest}/accepta', 'acceptCancelRequest')->name('accept.cancel');
+                // Route::get('{cancelRequest}/refuza', 'refuseCancelRequest')->name('refuse.cancel');
             });
 
             Route::group(['prefix' => 'rambursuri', 'as' => 'repayments.', 'controller' => 'RepaymentsController'], function () {

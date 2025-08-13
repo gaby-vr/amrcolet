@@ -7,6 +7,7 @@ use App\Courier\DPD\DPDCourierGateway;
 use App\Courier\GLS\GLSCourierGateway;
 use App\Courier\PostisGate\PostisGateCourierGateway;
 use App\Courier\UrgentCargus\UrgentCargusCourierGateway;
+use App\Courier\TwoShip\TwoShipCourierGateway;
 use Illuminate\Support\ServiceProvider;
 
 class CourierServiceProvider extends ServiceProvider
@@ -28,6 +29,8 @@ class CourierServiceProvider extends ServiceProvider
                     return new GLSCourierGateway($array);
                 case 4:
                     return new PostisGateCourierGateway($array);
+                case 5:
+                    return new TwoShipCourierGateway($array);
                 default:
                     return true;
             }

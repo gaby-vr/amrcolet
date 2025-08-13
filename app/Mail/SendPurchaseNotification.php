@@ -56,6 +56,12 @@ class SendPurchaseNotification extends Mailable
                 $courierGateway = app(CourierGateway::class, ['type' => $details['awb_api']]);
                 $array['awb'] = $details['awb_shipment_id'];
                 $array['return'] = true;
+            } elseif($details['awb_api'] == 5) {
+                // 2ship
+                $name = $details['curier_name'];
+                $courierGateway = app(CourierGateway::class, ['type' => $details['awb_api']]);
+                $array['awb'] = $details['awb_shipment_id'];
+                $array['return'] = true;
             } else {
                 $name = 'Cargus';
                 $courierGateway = app(CourierGateway::class, ['type' => $details['awb_api']]);

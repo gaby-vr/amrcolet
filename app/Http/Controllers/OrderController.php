@@ -453,6 +453,63 @@ class OrderController extends Controller
                 }
 
                 break;
+            case 5: // 2Ship
+                try {
+                    $carrierId = (int) $curier->meta('special_2ship_carrier_id');
+                    $api = app(CourierGateway::class, ['type' => $curier->api_curier]);
+
+                    $payload = [
+                        'CarrierId' => $carrierId,
+                        "Sender" => [
+                            "Country" => strtoupper($sender['country_code'] ?? 'RO'),
+                            "State" => $sender['county'] ?? '',
+                            "City" => $sender['locality'] ?? '',
+                            "PostalCode" => $sender['postcode'] ?? '',
+                            "Address1" => ($sender['street'] ?? '') . ' ' . ($sender['street_nr'] ?? ''),
+                            "CompanyName" => $sender['company'] ?? $sender['name'] ?? '',
+                            "IsResidential" => false
+                        ],
+                        "Recipient" => [
+                            "Country" => strtoupper($receiver['country_code'] ?? 'RO'),
+                            "State" => $receiver['county'] ?? '',
+                            "City" => $receiver['locality'] ?? '',
+                            "PostalCode" => $receiver['postcode'] ?? '',
+                            "Address1" => ($receiver['street'] ?? '') . ' ' . ($receiver['street_nr'] ?? ''),
+                            "CompanyName" => $receiver['company'] ?? $receiver['name'] ?? '',
+                            "IsResidential" => true
+                        ],
+                        "Packages" => array_map(function ($parcel) {
+                            return [
+                                "Weight" => $parcel['weight'],
+                                "Length" => $parcel['length'],
+                                "Width" => $parcel['width'],
+                                "Height" => $parcel['height'],
+                                "WeightType" => "Kilograms",
+                                "DimensionType" => "Centimeters",
+                                "Packaging" => "Package",
+                                // "IsStackable" => false,
+                                // "ApplyWeightAndDimsFromTheAssignedCommodity" => false
+                            ];
+                        }, $parcels),
+                        "PickupDate" => $api->formatDate($package['pickup_day'], $package['start_pickup_hour']),
+                        // "Billing" => [
+                        //     "BillingType" => "Prepaid"
+                        // ],
+                        "ShipmentProtection" => $package['assurance'] ?? 0,
+                        "ShipmentProtectionCurrency" => "RON",
+                        "GlobalOptions" => [
+                            "SaturdayDelivery" => $package['options']['work_saturday'] ?? false
+                        ]
+                    ];
+            
+                    $price = $api->calculateOrder(['payload' => $payload, 'carrierId' => $carrierId]);
+                    $total['api_price'] = $price ?? false;
+            
+                } catch(\Exception $e) {
+                    \Log::error('2Ship error: ' . $e->getMessage());
+                }
+            
+                break;
             default:
                 return $total;
         }
@@ -1029,6 +1086,7 @@ class OrderController extends Controller
             $details['total_weight'] = $livrare->total_weight;
             $details['created_at'] = $livrare->created_at;
             $details['invoice_id'] = $livrare->invoice ? $livrare->invoice_id : null;
+            $details['curier_name'] = $livrare->curier;
             $details['subject'] = __('Expediere noua catre :name', ['name' => $receiver->name]);
             $details['title'] = '';
             $details['body'] = __('Stimate client,<br><br>');

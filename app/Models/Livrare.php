@@ -198,6 +198,7 @@ class Livrare extends Model
             13 => __('Livrare nereusita'),
             14 => __('Expediere semnalata cu avarie'),
             15 => __('Expediere incompleta'), // only for DPD
+            16 => __('Comanda in asteptare'),
         ];
         return $status !== null ? ($list[$status] ?? '') : $list;
     }

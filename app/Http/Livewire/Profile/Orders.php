@@ -87,7 +87,24 @@ class Orders extends Component
                     });
                 }
             }
-            $orders = $orders->orderByDesc('created_at')->paginate(10);
+
+            $orders->whereNotNull('user_id');
+            if ($this->section === 'pending') {
+                // Remove manual status filter to avoid conflict
+                unset($this->conditions['status']);
+
+                $orders = $orders->where('status', 16)
+                                ->orderByDesc('created_at')
+                                ->paginate(10);
+
+                return view('profile.orders.pending', [
+                    'condtitions' => $this->conditions,
+                    'status_list' => Livrare::statusList(),
+                    'orders' => $orders,
+                ]);
+            }
+
+            $orders = $orders->where('status', '!=', 16)->orderByDesc('created_at')->paginate(10);
             return view('profile.orders.orders', [
                 'condtitions' => $this->conditions,
                 'status_list' => Livrare::statusList(),

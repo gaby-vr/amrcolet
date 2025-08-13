@@ -39,6 +39,9 @@ trait OrderCreationTrait
             case 3:
                 self::createGLSOrder($livrare, $curier, $parcels);
                 break;
+            case 5: // 2Ship
+                self::createTwoShipOrder($livrare, $curier, $parcels);
+                break;
             default:
                 break;
         }
@@ -476,5 +479,236 @@ trait OrderCreationTrait
             $second_half = substr($input, $middle_space);
         }
         return array(trim($first_half), trim($second_half));
+    }
+
+    private function normalize_judet($judet) {
+        // Inlocuieste diacriticele
+        $diacritice = ['ă', 'â', 'î', 'ș', 'ț', 'Ă', 'Â', 'Î', 'Ș', 'Ț'];
+        $fara_diacritice = ['a', 'a', 'i', 's', 't', 'A', 'A', 'I', 'S', 'T'];
+        $judet = str_replace($diacritice, $fara_diacritice, $judet);
+
+        // Returneaza cu majuscule pentru mapare
+        return strtoupper($judet);
+    }
+
+    private function cod_judet($nume_judet) {
+        $map_judete = [
+            'ALBA' => 'AB',
+            'ARAD' => 'AR',
+            'ARGES' => 'AG',
+            'BACAU' => 'BC',
+            'BIHOR' => 'BH',
+            'BISTRITA-NASAUD' => 'BN',
+            'BOTOSANI' => 'BT',
+            'BRASOV' => 'BV',
+            'BRAILA' => 'BR',
+            'BUZAU' => 'BZ',
+            'CARAS-SEVERIN' => 'CS',
+            'CALARASI' => 'CL',
+            'CLUJ' => 'CJ',
+            'CONSTANTA' => 'CT',
+            'COVASNA' => 'CV',
+            'DAMBOVITA' => 'DB',
+            'DOLJ' => 'DJ',
+            'GALATI' => 'GL',
+            'GIURGIU' => 'GR',
+            'GORJ' => 'GJ',
+            'HARGHITA' => 'HR',
+            'HUNEDOARA' => 'HD',
+            'IALOMITA' => 'IL',
+            'IASI' => 'IS',
+            'ILFOV' => 'IF',
+            'MARAMURES' => 'MM',
+            'MEHEDINTI' => 'MH',
+            'MURES' => 'MS',
+            'NEAMT' => 'NT',
+            'OLT' => 'OT',
+            'PRAHOVA' => 'PH',
+            'SATU MARE' => 'SM',
+            'SALAJ' => 'SJ',
+            'SIBIU' => 'SB',
+            'SUCEAVA' => 'SV',
+            'TELEORMAN' => 'TR',
+            'TIMIS' => 'TM',
+            'TULCEA' => 'TL',
+            'VASLUI' => 'VS',
+            'VALCEA' => 'VL',
+            'VRANCEA' => 'VN',
+            'BUCURESTI' => 'B'
+        ];
+
+        $nume_judet_normalizat = $this->normalize_judet($nume_judet);
+        return $map_judete[$nume_judet_normalizat] ?? null;
+    }
+
+    public function createTwoShipOrder($livrare, $curier, $parcels)
+    {
+        $api = app(CourierGateway::class, ['type' => 5]);
+    
+        $sender = $livrare->sender;
+        $receiver = $livrare->receiver;
+    
+        $senderAddress =
+            (isset($sender['street']) && $sender['street'] !== '-' ? 'Strada '.$sender['street'] : '').
+            (isset($sender['street_nr']) && $sender['street_nr'] !== '-' ? ' Nr. '.$sender['street_nr'] : '').
+            (isset($sender['bl_code']) ? ' Bl. '.$sender['bl_code'] : '').
+            (isset($sender['bl_letter']) ? ', Sc. '.$sender['bl_letter'] : '').
+            (isset($sender['intercom']) ? ', Interfon '.$sender['intercom'] : '').
+            (isset($sender['floor']) ? ', Etaj '.$sender['floor'] : '').
+            (isset($sender['apartment']) ? ', Ap./Nr. '.$sender['apartment'] : '');
+    
+        $receiverAddress =
+            (isset($receiver['street']) && $receiver['street'] !== '-' ? 'Strada '.$receiver['street'] : '').
+            (isset($receiver['street_nr']) && $receiver['street_nr'] !== '-' ? ' Nr. '.$receiver['street_nr'] : '').
+            (isset($receiver['bl_code']) ? ' Bl. '.$receiver['bl_code'] : '').
+            (isset($receiver['bl_letter']) ? ', Sc. '.$receiver['bl_letter'] : '').
+            (isset($receiver['intercom']) ? ', Interfon '.$receiver['intercom'] : '').
+            (isset($receiver['floor']) ? ', Etaj '.$receiver['floor'] : '').
+            (isset($receiver['apartment']) ? ', Ap./Nr. '.$receiver['apartment'] : '');
+    
+        $pickupDate = $livrare['pickup_day'] instanceof Carbon
+            ? $livrare['pickup_day']->setTimezone(config('app.timezone'))->startOfDay()->addHours(10)->format('Y-m-d\TH:i:s.000')
+            : Carbon::parse($livrare['pickup_day'])->setTimezone(config('app.timezone'))->startOfDay()->addHours(10)->format('Y-m-d\TH:i:s.000');
+    
+        $packages = [];
+    
+        foreach ($parcels as $parcel) {
+            $packages[] = [
+                "Weight" => $parcel['weight'] ?? 1,
+                "Length" => $parcel['length'] ?? 10,
+                "Width" => $parcel['width'] ?? 10,
+                "Height" => $parcel['height'] ?? 10,
+                "Packaging" => "NotSet"
+            ];
+        }
+    
+        $payload = [
+            "CarrierId" => $curier->meta('special_2ship_carrier_id') ?? 0,
+            "Sender" => [
+                "PersonName" => $sender['name'] ?? '',
+                "CompanyName" => $sender['company'] ?? $sender['name'],
+                "Country" => strtoupper($sender['country_code'] ?? 'RO'),
+                "State" => $this->cod_judet($sender['county']),
+                "City" => $sender['locality'],
+                "PostalCode" => $sender['postcode'],
+                "Address1" => $senderAddress,
+                "Telephone" => $sender['phone'],
+                "Email" => $sender['email'] ?? '',
+                "IsResidential" => false
+            ],
+            "Recipient" => [
+                "PersonName" => $receiver['name'] ?? '',
+                "CompanyName" => $receiver['company'] ?? $receiver['name'],
+                "Country" => strtoupper($receiver['country_code'] ?? 'RO'),
+                "State" => $this->cod_judet($receiver['county']),
+                "City" => $receiver['locality'],
+                "PostalCode" => $receiver['postcode'],
+                "Address1" => $receiverAddress,
+                "Telephone" => $receiver['phone'],
+                "Email" => $receiver['email'] ?? '',
+                "IsResidential" => false
+            ],
+            "PickupDate" => $pickupDate,
+            "PickupRequest" => [
+                "RequestAPickup" => true,
+                "ReadyTime" => $livrare['start_pickup_hour'] ?? '10:00',
+                "CompanyCloseTime" => $livrare['end_pickup_hour'] ?? '18:00'
+            ],
+            "Packages" => $packages,
+            "Contents" => [
+                "Documents" => [
+                    [
+                        "Description" => $livrare['content'] ?? 'Documente',
+                        "IsDutiable" => false
+                    ]
+                ]
+            ],
+            "ShipmentReference" => (string) $livrare->id,
+            "ShipmentProtection" => $livrare['assurance'] ?? 0,
+            "ShipmentProtectionCurrency" => "RON",
+            "Billing" => [
+                "BillingType" => "Prepaid"
+            ]
+        ];
+
+        $shipOptions = [];
+        $applyRateOptions = [];
+        $setIsReturn = true; // default: we will set IsReturn unless overridden by a special value
+
+        $specialOptions = [
+            'work_saturday',
+            'require_awb',
+            'open_when_received',
+            'retur_document',
+            'ramburs_cash',
+            'ramburs_cont',
+            'assurance'
+        ];
+
+        foreach ($specialOptions as $key) {
+            $attrKey = '2ship_' . $key;
+            $specialValue = $curier->getAttributes()[$attrKey] ?? null;
+
+            if ($specialValue) {
+                $decoded = json_decode($specialValue, true);
+                if (isset($decoded['code'])) {
+                    $shipOptions[] = [
+                        'code' => $decoded['code'],
+                        'value' => '1'
+                    ];
+
+                    if ($key === 'retur_document') {
+                        $setIsReturn = false; // Skip setting IsReturn manually
+                    }
+                }
+            } else {
+                // Fallback logic
+                switch ($key) {
+                    case 'work_saturday':
+                        $applyRateOptions['SaturdayDelivery'] = !empty($livrare['work_saturday']);
+                        break;
+                    case 'open_when_received':
+                        $applyRateOptions['CheckOnDelivery'] = !empty($livrare['open_when_received']);
+                        break;
+                    case 'ramburs_cash':
+                    case 'ramburs_cont':
+                        if ($livrare['ramburs'] > 1) {
+                            $applyRateOptions['CollectOnDelivery'] = [
+                                'Amount' => $livrare['ramburs_value'] ?? 0
+                            ];
+                        }
+                        break;
+                    case 'retur_document':
+                        // defer setting IsReturn after this loop
+                        break;
+                }
+            }
+        }
+
+        if (!empty($shipOptions)) {
+            $payload['ShipOptions'] = $shipOptions;
+        }
+        if (!empty($applyRateOptions)) {
+            $payload["ApplyRate"] = true;
+            $payload['ApplyRateOptions'] = $applyRateOptions;
+        }
+        if ($setIsReturn) {
+            $payload['IsReturn'] = !empty($livrare['retur_document']);
+        }
+
+        $response = json_decode($api->setOrder($payload), true);
+    
+        if ($response === false) {
+            $livrare->status = 5;
+            $livrare->save();
+            return back()->withErrors(['error' => __('Informațiile trimise prin API nu au fost corecte. Contactați un administrator.')]);
+        } else {
+            $livrare->api_shipment_id = $response['OrderNumber'];
+            $livrare->api_shipment_awb = $response['HoldShipmentId'];
+            $livrare->save();
+        }
+    
+        $receiver['full_address'] = $receiverAddress;
+        $this->creareRepayment($livrare, $receiver);
     }
 }
