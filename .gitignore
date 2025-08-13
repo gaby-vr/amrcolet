@@ -1,0 +1,88 @@
+# ========================================
+# Laravel & PHP
+# ========================================
+/vendor/
+composer.lock
+/.phpunit.result.cache
+
+# ========================================
+# Environment files
+# ========================================
+.env
+.env.example
+.env.testing
+.env.local
+.env.*
+!.env.example
+
+# ========================================
+# Node / Frontend
+# ========================================
+/node_modules/
+npm-debug.log
+yarn-error.log
+
+# Public build outputs
+/public/hot
+/public/storage
+/public/js/*.js
+/public/css/*.css
+/public/mix-manifest.json
+/public/build
+
+# ========================================
+# Laravel storage
+# ========================================
+/storage/*.key
+/storage/oauth-private.key
+/storage/oauth-public.key
+/storage/framework/*
+!/storage/framework/.gitignore
+/storage/logs/*
+!/storage/logs/.gitignore
+/storage/app/public/*
+!/storage/app/public/.gitignore
+
+# ========================================
+# Laravel cache
+# ========================================
+/bootstrap/cache/*
+!/bootstrap/cache/.gitignore
+
+# ========================================
+# IDE / Editor files
+# ========================================
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# ========================================
+# Deployment / Local Dev
+# ========================================
+/.forge/
+/.env.dusk.local
+Homestead.json
+Homestead.yaml
+Vagrantfile
+
+# ========================================
+# PHPUnit
+# ========================================
+phpunit.xml
+phpunit.xml.dist
+
+# ========================================
+# OS / Misc
+# ========================================
+.DS_Store
+Thumbs.db
+*.log
+*.swp
+*.swo
+*.bak
+
+# Extra environment and local config files
+.env.backup
+docker-compose.override.yml
+
